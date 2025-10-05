@@ -1,0 +1,229 @@
+pub use easy_config_macros::EasyConfig;
+use indexmap::IndexMap;
+use std::collections::{HashMap, HashSet, LinkedList};
+use std::fmt::Display;
+use std::str::FromStr;
+pub use types::password::Password;
+
+mod types;
+
+pub trait FromConfigDef: Sized {
+    fn from_props(props: &HashMap<String, String>) -> Result<Self, ConfigError>;
+}
+
+// --- Core Traits and Errors ---
+#[derive(thiserror::Error, Debug, PartialEq)]
+pub enum ConfigError {
+    #[error("Missing required configuration key: '{0}'")]
+    MissingKey(String),
+    #[error("Failed to parse key '{key}': {message}")]
+    InvalidValue { key: String, message: String },
+    #[error("Validation failed for key '{key}': {message}")]
+    ValidationFailed { key: String, message: String },
+}
+
+pub trait ConfigValue: Sized {
+    fn parse(key: &str, value_str: &str) -> Result<Self, ConfigError>;
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Importance {
+    HIGH,
+    MEDIUM,
+    LOW,
+}
+
+pub type Validator = fn(key: &str, value: &str) -> Result<(), ConfigError>;
+
+#[derive(Debug)]
+pub struct ConfigKey {
+    pub name: &'static str,
+    pub documentation: Option<&'static str>,
+    pub default_value: Option<&'static str>,
+    pub validator: Option<Validator>,
+    pub importance: Option<Importance>,
+    pub group: Option<&'static str>,
+    // pub order_in_group: Option<usize>,
+    // pub width: Width,
+    // pub display_name: Option<&'static str>,
+    // pub dependents: Vec<&'static str>,
+    // pub recommender: Recommender,
+    // pub internal_config: bool,
+    // pub alternative_string: Option<&'static str>,
+}
+
+#[derive(Default, Debug)]
+pub struct ConfigDef {
+    config_keys: IndexMap<&'static str, ConfigKey>,
+    _groups: LinkedList<String>,
+    _configs_with_no_parent: HashSet<String>,
+}
+
+#[derive(Default, Debug)]
+pub struct ConfigDefBuilder {
+    config_keys: IndexMap<&'static str, ConfigKey>,
+    groups: LinkedList<String>,
+}
+
+impl ConfigDef {
+    pub fn builder() -> ConfigDefBuilder {
+        ConfigDefBuilder::default()
+    }
+
+    pub fn find_key(&self, name: &str) -> Option<&ConfigKey> {
+        self.config_keys.get(name)
+    }
+}
+
+impl ConfigDefBuilder {
+    pub fn define(&mut self, key: ConfigKey) -> &mut Self {
+        if self.config_keys.contains_key(key.name) {
+            panic!("Configuration key {} is defined twice", key.name);
+        }
+
+        if let Some(group_name) = key.group.as_ref() {
+            let group_string = group_name.to_string();
+            if !self.groups.contains(&group_string) {
+                self.groups.push_back(group_string);
+            }
+        }
+
+        self.config_keys.insert(key.name, key);
+        self
+    }
+
+    pub fn build(self) -> ConfigDef {
+        ConfigDef {
+            config_keys: self.config_keys,
+            _groups: self.groups,
+            _configs_with_no_parent: HashSet::new(),
+        }
+    }
+}
+
+fn parse_config_value<T>(key: &str, s: &str) -> Result<T, ConfigError>
+where
+    T: ConfigValue + Copy + FromStr + 'static, // The type must be parsable from a string.
+    <T as FromStr>::Err: Display,              // The error it produces must be printable
+{
+    s.trim()
+        .to_lowercase()
+        .parse()
+        .map_err(|e: <T as FromStr>::Err| ConfigError::InvalidValue {
+            key: key.to_string(),
+            message: e.to_string(),
+        })
+}
+
+impl ConfigValue for bool {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for i32 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for i64 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for f32 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for f64 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for String {
+    fn parse(_key: &str, s: &str) -> Result<Self, ConfigError> {
+        Ok(s.trim().to_string())
+    }
+}
+
+impl ConfigValue for Vec<String> {
+    fn parse(_key: &str, s: &str) -> Result<Self, ConfigError> {
+        Ok(s.trim()
+            .split(',')
+            .map(|item| item.trim().to_string())
+            .collect())
+    }
+}
+
+impl ConfigValue for Password {
+    fn parse(_key: &str, s: &str) -> Result<Self, ConfigError> {
+        Ok(Password::new(s.trim().to_string()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_basic_types() {
+        #[derive(Debug, PartialEq, EasyConfig)]
+        struct TestConfig {
+            #[config(default = "5", importance = Importance::HIGH, documentation = "docs")]
+            a: i32,
+            #[config(importance = Importance::HIGH, documentation = "docs")]
+            b: i64,
+            #[config(default = "hello", importance = Importance::HIGH, documentation = "docs")]
+            c: String,
+            #[config(importance = Importance::HIGH, documentation = "docs")]
+            d: Vec<String>,
+            #[config(importance = Importance::HIGH, documentation = "docs")]
+            e: f64,
+            #[config(importance = Importance::HIGH, documentation = "docs")]
+            f: String,
+            #[config(importance = Importance::HIGH, documentation = "docs")]
+            g: bool,
+            #[config(importance = Importance::HIGH, documentation = "docs")]
+            h: bool,
+            #[config(importance = Importance::HIGH, documentation = "docs")]
+            i: bool,
+            #[config(importance = Importance::HIGH, documentation = "docs")]
+            j: Password,
+        }
+
+        // Arrange: Set up the raw string properties.
+        let mut props = HashMap::new();
+        props.insert("a".to_string(), "1   ".to_string());
+        props.insert("b".to_string(), "2".to_string());
+        // "c" is omitted to test the default value.
+        props.insert("d".to_string(), " a , b, c".to_string());
+        props.insert("e".to_string(), "42.5".to_string());
+        props.insert("f".to_string(), "java.lang.String".to_string());
+        props.insert("g".to_string(), "true".to_string());
+        props.insert("h".to_string(), "FalSE".to_string());
+        props.insert("i".to_string(), "TRUE".to_string());
+        props.insert("j".to_string(), "password".to_string());
+
+        // Act: Parse the properties into the strongly typed struct.
+        let config = TestConfig::from_props(&props).unwrap();
+
+        // Assert: Check the final parsed values.
+        assert_eq!(config.a, 1);
+        assert_eq!(config.b, 2);
+        assert_eq!(config.c, "hello"); // Correctly uses the default
+        assert_eq!(config.d, vec!["a", "b", "c"]);
+        assert_eq!(config.e, 42.5);
+        assert_eq!(config.f, "java.lang.String");
+        assert_eq!(config.g, true);
+        assert_eq!(config.h, false);
+        assert_eq!(config.i, true);
+        assert_eq!(config.j, Password::new("password".to_string()));
+        assert_eq!(config.j.to_string(), "[hidden]");
+    }
+}
