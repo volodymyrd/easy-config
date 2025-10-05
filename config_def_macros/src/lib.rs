@@ -46,7 +46,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                         "default" => default = Some(get_string_lit_from_expr(&nv.value).unwrap()),
                         "group" => group = Some(get_string_lit_from_expr(&nv.value).unwrap()),
                         "importance" => importance = Some(get_path_from_expr(&nv.value).unwrap()),
-                        "validator" => validator = Some(get_path_from_expr(&nv.value).unwrap()),
+                        "validator" => validator = Some(get_expr(&nv.value).unwrap()),
                         _ => panic!("Unknown attribute: {}", ident),
                     }
                 }
@@ -96,10 +96,12 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
             fn from_props(props: &std::collections::HashMap<String, String>) -> Result<Self, ConfigError> {
                 let def = Self::config_def();
                 let get_value = |name: &str| -> Result<_, ConfigError> {
-                    let meta = def.find_key(name).ok_or_else(|| ConfigError::MissingKey(name.to_string()))?;
+                    let meta = def.find_key(name).ok_or_else(|| ConfigError::MissingName(name.to_string()))?;
                     let val_str = props.get(name).map(|s| s.as_str()).or(meta.default_value)
-                        .ok_or_else(|| ConfigError::MissingKey(name.to_string()))?;
-                    if let Some(validator) = meta.validator { validator(name, val_str)?; }
+                        .ok_or_else(|| ConfigError::MissingName(name.to_string()))?;
+                    if let Some(validator) = &meta.validator {
+                        validator.validate(name, val_str)?;
+                    }
                     Ok(val_str)
                 };
                 Ok(Self { #(#from_props_fields),* })
@@ -132,4 +134,8 @@ fn get_path_from_expr(expr: &Expr) -> syn::Result<ExprPath> {
         expr,
         "Expected a path (e.g., an enum variant or a function name)",
     ))
+}
+
+fn get_expr(expr: &Expr) -> syn::Result<Expr> {
+    Ok(expr.clone())
 }

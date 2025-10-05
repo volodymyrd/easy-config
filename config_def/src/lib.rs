@@ -1,25 +1,19 @@
 pub use easy_config_macros::EasyConfig;
+pub use errors::ConfigError;
+pub use validators::{Validator, range::Range};
+
 use indexmap::IndexMap;
 use std::collections::{HashMap, HashSet, LinkedList};
 use std::fmt::Display;
 use std::str::FromStr;
 pub use types::password::Password;
 
+mod errors;
 mod types;
+mod validators;
 
 pub trait FromConfigDef: Sized {
     fn from_props(props: &HashMap<String, String>) -> Result<Self, ConfigError>;
-}
-
-// --- Core Traits and Errors ---
-#[derive(thiserror::Error, Debug, PartialEq)]
-pub enum ConfigError {
-    #[error("Missing required configuration key: '{0}'")]
-    MissingKey(String),
-    #[error("Failed to parse key '{key}': {message}")]
-    InvalidValue { key: String, message: String },
-    #[error("Validation failed for key '{key}': {message}")]
-    ValidationFailed { key: String, message: String },
 }
 
 pub trait ConfigValue: Sized {
@@ -33,14 +27,12 @@ pub enum Importance {
     LOW,
 }
 
-pub type Validator = fn(key: &str, value: &str) -> Result<(), ConfigError>;
-
-#[derive(Debug)]
+#[derive(Clone)]
 pub struct ConfigKey {
     pub name: &'static str,
     pub documentation: Option<&'static str>,
     pub default_value: Option<&'static str>,
-    pub validator: Option<Validator>,
+    pub validator: Option<Box<dyn Validator>>,
     pub importance: Option<Importance>,
     pub group: Option<&'static str>,
     // pub order_in_group: Option<usize>,
@@ -52,14 +44,14 @@ pub struct ConfigKey {
     // pub alternative_string: Option<&'static str>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct ConfigDef {
     config_keys: IndexMap<&'static str, ConfigKey>,
     _groups: LinkedList<String>,
     _configs_with_no_parent: HashSet<String>,
 }
 
-#[derive(Default, Debug)]
+#[derive(Default)]
 pub struct ConfigDefBuilder {
     config_keys: IndexMap<&'static str, ConfigKey>,
     groups: LinkedList<String>,
@@ -110,7 +102,7 @@ where
         .to_lowercase()
         .parse()
         .map_err(|e: <T as FromStr>::Err| ConfigError::InvalidValue {
-            key: key.to_string(),
+            name: key.to_string(),
             message: e.to_string(),
         })
 }
@@ -175,7 +167,7 @@ mod tests {
     fn test_basic_types() {
         #[derive(Debug, PartialEq, EasyConfig)]
         struct TestConfig {
-            #[config(default = "5", importance = Importance::HIGH, documentation = "docs")]
+            #[config(default = "5", validator=Range::between(0, 14), importance = Importance::HIGH, documentation = "docs")]
             a: i32,
             #[config(importance = Importance::HIGH, documentation = "docs")]
             b: i64,
