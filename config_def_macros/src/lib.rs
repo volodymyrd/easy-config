@@ -7,7 +7,7 @@ use syn::{
     punctuated::Punctuated, token,
 };
 
-#[proc_macro_derive(EasyConfig, attributes(config))]
+#[proc_macro_derive(EasyConfig, attributes(attr))]
 pub fn easy_config_derive(input: TokenStream) -> TokenStream {
     let input = parse_macro_input!(input as DeriveInput);
     let name = &input.ident;
@@ -31,7 +31,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
         let mut group = None;
 
         for attr in &f.attrs {
-            if attr.path().is_ident("config") {
+            if attr.path().is_ident("attr") {
                 let parsed_attrs = attr
                     .parse_args_with(Punctuated::<MetaNameValue, token::Comma>::parse_terminated)
                     .expect("Failed to parse config attributes");

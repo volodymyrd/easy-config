@@ -167,25 +167,26 @@ mod tests {
     fn test_basic_types() {
         #[derive(Debug, PartialEq, EasyConfig)]
         struct TestConfig {
-            #[config(default = "5", validator=Range::between(0, 14), importance = Importance::HIGH, documentation = "docs")]
+            #[attr(default = "5", validator=Range::between(0, 14), importance = Importance::HIGH, 
+            documentation = "docs")]
             a: i32,
-            #[config(importance = Importance::HIGH, documentation = "docs")]
+            #[attr(importance = Importance::HIGH, documentation = "docs")]
             b: i64,
-            #[config(default = "hello", importance = Importance::HIGH, documentation = "docs")]
+            #[attr(default = "hello", importance = Importance::HIGH, documentation = "docs")]
             c: String,
-            #[config(importance = Importance::HIGH, documentation = "docs")]
+            #[attr(importance = Importance::HIGH, documentation = "docs")]
             d: Vec<String>,
-            #[config(importance = Importance::HIGH, documentation = "docs")]
+            #[attr(importance = Importance::HIGH, documentation = "docs")]
             e: f64,
-            #[config(importance = Importance::HIGH, documentation = "docs")]
+            #[attr(importance = Importance::HIGH, documentation = "docs")]
             f: String,
-            #[config(importance = Importance::HIGH, documentation = "docs")]
+            #[attr(importance = Importance::HIGH, documentation = "docs")]
             g: bool,
-            #[config(importance = Importance::HIGH, documentation = "docs")]
+            #[attr(importance = Importance::HIGH, documentation = "docs")]
             h: bool,
-            #[config(importance = Importance::HIGH, documentation = "docs")]
+            #[attr(importance = Importance::HIGH, documentation = "docs")]
             i: bool,
-            #[config(importance = Importance::HIGH, documentation = "docs")]
+            #[attr(importance = Importance::HIGH, documentation = "docs")]
             j: Password,
         }
 
