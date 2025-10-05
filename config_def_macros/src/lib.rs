@@ -3,8 +3,8 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    Data, DeriveInput, Expr, ExprPath, Fields, Lit, MetaNameValue, parse_macro_input,
-    punctuated::Punctuated, token,
+    Data, DeriveInput, Expr, ExprPath, Fields, GenericArgument, Lit, MetaNameValue, PathArguments,
+    Type, parse_macro_input, punctuated::Punctuated, token,
 };
 
 #[proc_macro_derive(EasyConfig, attributes(attr))]
@@ -79,6 +79,35 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
         let field_name = f.ident.as_ref().unwrap();
         let field_name_str = field_name.to_string();
         let ty = &f.ty;
+
+        // Check if the type is an Option<T>
+        if let Type::Path(type_path) = ty &&
+            type_path.path.segments.len() == 1 && type_path.path.segments[0].ident == "Option" {
+            // This is an Option<T>, so we need to get the inner type T.
+            let inner_ty = if let PathArguments::AngleBracketed(args) = &type_path.path.segments[0].arguments {
+                if let Some(GenericArgument::Type(inner)) = args.args.first() {
+                    inner
+                } else { panic!("Option must have a generic type argument") }
+            } else { panic!("Option must have a generic type argument") };
+
+            // Generate special logic for optional fields.
+            return quote! {
+                    #field_name: {
+                        let meta = def.find_key(#field_name_str).ok_or_else(|| ConfigError::MissingName(#field_name_str.to_string()))?;
+                        if let Some(val_str) = props.get(#field_name_str).map(|s| s.as_str()).or(meta.default_value) {
+                            if let Some(validator) = &meta.validator {
+                                validator.validate(#field_name_str, val_str)?;
+                            }
+                            Some(<#inner_ty as ConfigValue>::parse(#field_name_str, val_str)?)
+                        } else {
+                            None
+                        }
+                    }
+                };
+        }
+
+
+        // If not an Option<T>, generate the original, required-field logic.
         quote! { #field_name: <#ty as ConfigValue>::parse(#field_name_str, get_value(#field_name_str)?)? }
     });
 

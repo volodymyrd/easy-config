@@ -167,7 +167,7 @@ mod tests {
     fn test_basic_types() {
         #[derive(Debug, PartialEq, EasyConfig)]
         struct TestConfig {
-            #[attr(default = "5", validator=Range::between(0, 14), importance = Importance::HIGH, 
+            #[attr(default = "5", validator=Range::between(0, 14), importance = Importance::HIGH,
             documentation = "docs")]
             a: i32,
             #[attr(importance = Importance::HIGH, documentation = "docs")]
@@ -218,5 +218,64 @@ mod tests {
         assert_eq!(config.i, true);
         assert_eq!(config.j, Password::new("password".to_string()));
         assert_eq!(config.j.to_string(), "[hidden]");
+    }
+
+    #[test]
+    fn test_invalid_default() {
+        #[derive(Debug, EasyConfig)]
+        struct TestConfig {
+            #[attr(default = "hello")] // "hello" is not a valid i32
+            _a: i32,
+        }
+
+        let result = TestConfig::from_props(&HashMap::new());
+
+        match result {
+            Err(ConfigError::InvalidValue { name, message }) => {
+                assert_eq!(name, "_a");
+                // The exact error message from `ParseIntError` can be a bit volatile,
+                // so checking `contains` is more robust than a direct equality check.
+                assert!(message.contains("invalid digit found in string"));
+            }
+            _ => {
+                // If we get `Ok` or a different `Err` variant, fail the test.
+                panic!("Expected InvalidValue error, but got {:?}", result);
+            }
+        }
+    }
+
+    #[test]
+    fn test_null_default() {
+        #[derive(EasyConfig, Debug, PartialEq)]
+        struct TestConfig {
+            // This field is optional and has no default.
+            #[attr(documentation = "docs")]
+            a: Option<i32>,
+        }
+
+        // Parse empty properties.
+        let props = HashMap::new();
+        let config = TestConfig::from_props(&props).unwrap();
+
+        // The result should be `None`.
+        assert_eq!(config.a, None);
+    }
+
+    // --- Test 3: Missing Required Value ---
+    #[test]
+    fn test_missing_required() {
+        #[derive(EasyConfig)]
+        struct TestConfig {
+            // This field is required (not an Option, no default).
+            #[attr(importance = Importance::HIGH, documentation = "docs")]
+            _a: i32,
+        }
+
+        // Parse empty properties.
+        let props = HashMap::new();
+        let result = TestConfig::from_props(&props);
+
+        // The result should be a `MissingKey` error.
+        assert!(matches!(result, Err(ConfigError::MissingName(s)) if s == "_a"));
     }
 }
