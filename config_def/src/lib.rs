@@ -162,6 +162,7 @@ impl ConfigValue for Password {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use std::fmt::Debug;
 
     #[test]
     fn test_basic_types() {
@@ -253,15 +254,11 @@ mod tests {
             a: Option<i32>,
         }
 
-        // Parse empty properties.
-        let props = HashMap::new();
-        let config = TestConfig::from_props(&props).unwrap();
+        let config = TestConfig::from_props(&HashMap::new()).unwrap();
 
-        // The result should be `None`.
         assert_eq!(config.a, None);
     }
 
-    // --- Test 3: Missing Required Value ---
     #[test]
     fn test_missing_required() {
         #[derive(EasyConfig)]
@@ -271,11 +268,66 @@ mod tests {
             _a: i32,
         }
 
-        // Parse empty properties.
-        let props = HashMap::new();
-        let result = TestConfig::from_props(&props);
+        let config = TestConfig::from_props(&HashMap::new());
 
-        // The result should be a `MissingKey` error.
-        assert!(matches!(result, Err(ConfigError::MissingName(s)) if s == "_a"));
+        assert!(matches!(config, Err(ConfigError::MissingName(s)) if s == "_a"));
     }
+
+    #[test]
+    fn test_parsing_empty_default_value_for_string_field_should_succeed() {
+        #[derive(EasyConfig)]
+        struct TestConfig {
+            // This field is required empty by default.
+            #[attr(default="", importance = Importance::HIGH, documentation = "docs")]
+            _a: String,
+        }
+
+        let _ = TestConfig::from_props(&HashMap::new()).expect("parsing should succeed");
+    }
+
+    macro_rules! test_bad_inputs {
+        // The macro takes a test name, the type to test, and a slice of bad values.
+        ($test_name:ident, $type:ty, $bad_values:expr) => {
+            #[test]
+            fn $test_name() {
+                #[derive(EasyConfig, Debug)]
+                struct TestConfig { _name: $type }
+
+                for &value in $bad_values {
+                    let mut props = HashMap::new();
+                    props.insert("_name".to_string(), value.to_string());
+
+                    let result = TestConfig::from_props(&props);
+
+                    assert!(
+                        matches!(&result, Err(ConfigError::InvalidValue { name, .. }) if name == "_name"),
+                        "Expected InvalidValue error for type '{}' with input '{}', but got {:?}",
+                        stringify!($type),
+                        value,
+                        result
+                    );
+                }
+            }
+        };
+    }
+
+    test_bad_inputs!(
+        test_bad_inputs_for_int,
+        i32,
+        &["hello", "42.5", "9223372036854775807"]
+    );
+
+    test_bad_inputs!(
+        test_bad_inputs_for_long,
+        i64,
+        &["hello", "42.5", "922337203685477580700"]
+    );
+
+    test_bad_inputs!(test_bad_inputs_for_double, f64, &["hello", "not-a-number"]);
+
+    test_bad_inputs!(
+        test_bad_inputs_for_boolean,
+        bool,
+        &["hello", "truee", "fals", "0", "1"]
+    );
 }
