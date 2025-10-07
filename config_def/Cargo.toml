@@ -6,6 +6,7 @@ repository.workspace = true
 homepage.workspace = true
 license.workspace = true
 edition.workspace = true
+description = "A Rust library for defining and validating application configurations, inspired by Apache Kafka's ConfigDef"
 
 [dependencies]
 easy-config-macros = { workspace = true }
