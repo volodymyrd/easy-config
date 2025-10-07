@@ -2,6 +2,7 @@ use crate::ConfigError;
 use std::fmt::Display;
 
 pub(crate) mod range;
+pub(crate) mod valid_string;
 
 /// A trait for any stateful validation logic.
 /// It must be `Send + Sync` to be stored in a static `Lazy` cell.

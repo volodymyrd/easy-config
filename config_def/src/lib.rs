@@ -1,6 +1,6 @@
 pub use easy_config_macros::EasyConfig;
 pub use errors::ConfigError;
-pub use validators::{Validator, range::Range};
+pub use validators::{Validator, range::Range, valid_string::ValidString};
 
 use indexmap::IndexMap;
 use std::collections::{HashMap, HashSet, LinkedList};
@@ -330,4 +330,50 @@ mod tests {
         bool,
         &["hello", "truee", "fals", "0", "1"]
     );
+
+    #[test]
+    fn test_invalid_default_range() {
+        #[derive(Debug, EasyConfig)]
+        struct TestConfig {
+            #[attr(default="-1", validator=Range::between(0, 10),
+            importance = Importance::HIGH, documentation = "docs")]
+            _a: i32,
+        }
+
+        let config = TestConfig::from_props(&HashMap::new());
+
+        assert!(
+            matches!(&config, Err(ConfigError::ValidationFailed{name, message})
+            if name == "_a" && message.contains("Value -1 must be at least 0")
+            ),
+            "Expected ValidationFailed error, but got {:?}",
+            &config
+        );
+
+        println!("Received expected error: {:?}", &config.unwrap_err());
+    }
+
+    #[test]
+    fn test_invalid_default_string() {
+        #[derive(Debug, EasyConfig)]
+        struct TestConfig {
+            #[attr(default="bad", validator=ValidString::in_list(&["valid", "values"]),
+            importance = Importance::HIGH, documentation = "docs")]
+            _a: String,
+        }
+
+        let config = TestConfig::from_props(&HashMap::new());
+
+        assert!(
+            matches!(
+                &config,
+                Err(ConfigError::ValidationFailed { name, message })
+                    if name == "_a" && message.contains("must be one of: valid, values")
+            ),
+            "Expected ValidationFailed error, but got {:?}",
+            &config
+        );
+
+        println!("Received expected error: {:?}", &config.unwrap_err());
+    }
 }
