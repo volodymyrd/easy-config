@@ -1,0 +1,63 @@
+# The name of your GitHub Actions workflow. This is displayed on the "Actions" tab.
+name: Rust CI
+
+# Controls when the workflow will run.
+on:
+  # Triggers the workflow on push events but only for the "main" and "master" branches.
+  push:
+    branches: [ "main", "master" ]
+  # Triggers the workflow on pull request events targeted at the "main" or "master" branches.
+  pull_request:
+    branches: [ "main", "master" ]
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel.
+jobs:
+  # The main job that will build and test your code.
+  build_and_test:
+    # The type of virtual machine to run the job on. "ubuntu-latest" is a good default.
+    runs-on: ubuntu-latest
+
+    # A sequence of tasks that will be executed as part of the job.
+    steps:
+      # Step 1: Check out your repository code so the workflow can access it.
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Step 2: Install the stable Rust toolchain.
+      # This uses a trusted community action to manage the Rust installation.
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      # Step 3: Set up caching for dependencies.
+      # This step caches your 'target' directory and Cargo's dependency registry
+      # to speed up subsequent builds significantly. The cache is invalidated
+      # whenever your Cargo.lock file changes.
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
+      # Step 4: Check if the code is correctly formatted.
+      # The '--check' flag will fail the job if the code is not formatted,
+      # which is exactly what we want in CI.
+      - name: Check formatting
+        run: cargo fmt -- --check
+
+      # Step 5: Run Clippy, the Rust linter.
+      # This helps catch common mistakes and improve your code.
+      # The '-- -D warnings' flag treats all compiler warnings as errors,
+      # ensuring a high standard of code quality.
+      - name: Run Clippy
+        run: cargo clippy --workspace -- -D warnings
+
+      # Step 6: Run the tests for all crates in the workspace.
+      # The '--workspace' flag is essential for testing all your crates.
+      # The '--verbose' flag provides more detailed output in the logs.
+      - name: Run tests
+        run: cargo test --workspace --verbose
