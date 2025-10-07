@@ -376,4 +376,13 @@ mod tests {
 
         println!("Received expected error: {:?}", &config.unwrap_err());
     }
+
+    // TODO: Add support for pluggable components
+    //     @Test
+    //     public void testNestedClass() {
+    //         // getName(), not getSimpleName() or getCanonicalName(), is the version that should be able to locate the class
+    //         Map<String, Object> props = Collections.singletonMap("name", NestedClass.class.getName());
+    //         new ConfigDef().define("name", Type.CLASS, Importance.HIGH, "docs").parse(props);
+    //     }
+    //
 }
