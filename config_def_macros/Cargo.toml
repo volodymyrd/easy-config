@@ -6,6 +6,7 @@ repository.workspace = true
 homepage.workspace = true
 license.workspace = true
 edition.workspace = true
+description = "Procedural macros for the easy-config crate."
 
 [lib]
 proc-macro = true
