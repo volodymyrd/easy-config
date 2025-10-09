@@ -4,7 +4,7 @@ version = 4
 
 [[package]]
 name = "easy-config-def"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "easy-config-macros",
  "indexmap",
@@ -14,7 +14,7 @@ dependencies = [
 
 [[package]]
 name = "easy-config-macros"
-version = "0.0.2"
+version = "0.0.3"
 dependencies = [
  "quote",
  "syn",
