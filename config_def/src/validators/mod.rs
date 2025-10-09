@@ -1,5 +1,5 @@
 use crate::ConfigError;
-use std::fmt::Display;
+use std::fmt::{Debug, Display, Formatter};
 
 pub(crate) mod range;
 pub(crate) mod valid_list;
@@ -19,5 +19,11 @@ pub trait Validator: Display + Send + Sync {
 impl Clone for Box<dyn Validator> {
     fn clone(&self) -> Self {
         self.box_clone()
+    }
+}
+
+impl Debug for Box<dyn Validator> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Validator({})", self)
     }
 }

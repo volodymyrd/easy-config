@@ -71,3 +71,25 @@ impl Display for Range {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_range_debug_output() {
+        // Test the derived Debug impl on the struct itself
+        let range_struct = Range::new(Some(10.0), Some(100.0));
+        let struct_debug = format!("{:?}", range_struct);
+        assert_eq!(struct_debug, "Range { min: Some(10.0), max: Some(100.0) }");
+
+        // Test the Debug impl on the Box<dyn Validator> which should use the Display impl
+        let at_least_validator = Range::at_least(0);
+        let at_least_debug = format!("{:?}", at_least_validator);
+        assert_eq!(at_least_debug, "Validator([0, ...])");
+
+        let between_validator = Range::between(10, 20);
+        let between_debug = format!("{:?}", between_validator);
+        assert_eq!(between_debug, "Validator([10, ..., 20])");
+    }
+}

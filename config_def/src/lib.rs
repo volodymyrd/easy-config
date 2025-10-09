@@ -26,7 +26,7 @@ pub enum Importance {
     LOW,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct ConfigKey {
     pub name: &'static str,
     pub documentation: Option<&'static str>,
