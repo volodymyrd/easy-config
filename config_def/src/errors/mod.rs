@@ -4,6 +4,6 @@ pub enum ConfigError {
     MissingName(String),
     #[error("Failed to parse name '{name}': {message}")]
     InvalidValue { name: String, message: String },
-    #[error("Validation failed for key '{name}': {message}")]
+    #[error("Validation failed for name '{name}': {message}")]
     ValidationFailed { name: String, message: String },
 }

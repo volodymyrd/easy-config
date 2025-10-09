@@ -1,6 +1,6 @@
 pub use easy_config_macros::EasyConfig;
 pub use errors::ConfigError;
-pub use validators::{Validator, range::Range, valid_string::ValidString};
+pub use validators::{Validator, range::Range, valid_list::ValidList, valid_string::ValidString};
 
 use indexmap::IndexMap;
 use std::collections::{HashMap, HashSet, LinkedList};
@@ -145,10 +145,11 @@ impl ConfigValue for String {
 
 impl ConfigValue for Vec<String> {
     fn parse(_key: &str, s: &str) -> Result<Self, ConfigError> {
-        Ok(s.trim()
-            .split(',')
-            .map(|item| item.trim().to_string())
-            .collect())
+        let s = s.trim();
+        if s.is_empty() {
+            return Ok(Vec::new());
+        }
+        Ok(s.split(',').map(|item| item.trim().to_string()).collect())
     }
 }
 
@@ -181,6 +182,8 @@ mod tests {
             e: f64,
             #[attr(importance = Importance::HIGH, documentation = "docs")]
             f: String,
+            #[attr(name="prop.f", importance = Importance::HIGH, documentation = "docs")]
+            f1: String,
             #[attr(importance = Importance::HIGH, documentation = "docs")]
             g: bool,
             #[attr(importance = Importance::HIGH, documentation = "docs")]
@@ -199,6 +202,7 @@ mod tests {
         props.insert("d".to_string(), " a , b, c".to_string());
         props.insert("e".to_string(), "42.5".to_string());
         props.insert("f".to_string(), "java.lang.String".to_string());
+        props.insert("prop.f".to_string(), "prop_f_val".to_string());
         props.insert("g".to_string(), "true".to_string());
         props.insert("h".to_string(), "FalSE".to_string());
         props.insert("i".to_string(), "TRUE".to_string());
@@ -214,6 +218,7 @@ mod tests {
         assert_eq!(config.d, vec!["a", "b", "c"]);
         assert_eq!(config.e, 42.5);
         assert_eq!(config.f, "java.lang.String");
+        assert_eq!(config.f1, "prop_f_val");
         assert_eq!(config.g, true);
         assert_eq!(config.h, false);
         assert_eq!(config.i, true);
@@ -385,4 +390,225 @@ mod tests {
     //         new ConfigDef().define("name", Type.CLASS, Importance.HIGH, "docs").parse(props);
     //     }
     //
+
+    macro_rules! test_validators {
+        // The macro takes a test name, type, validator, default, slice of ok values,
+        // slice of bad values.
+        ($test_name:ident, $type:ty, $default:expr, $validator:expr, $ok_values:expr, $bad_values:expr) => {
+            #[test]
+            fn $test_name() {
+                #[derive(Debug, EasyConfig)]
+                struct TestConfig {
+                    #[attr(default = "$default", validator = $validator, importance = Importance::HIGH,
+                    documentation = "docs")]
+                    name: $type,
+                }
+
+                for &value in $ok_values {
+                    let mut props = HashMap::new();
+                    props.insert("name".to_string(), value.to_string());
+
+                    let config = TestConfig::from_props(&props).unwrap_or_else(|e| {
+                        panic!("Expected success for input '{}', but got error: {}", value, e)
+                    });
+
+                    let expected_val = <$type as ConfigValue>::parse("name", value).unwrap();
+                    assert_eq!(config.name, expected_val);
+                }
+
+                for &value in $bad_values {
+                    let mut props = HashMap::new();
+                    props.insert("name".to_string(), value.to_string());
+
+                    let result = TestConfig::from_props(&props);
+
+                    assert!(
+                        matches!(&result, Err(ConfigError::ValidationFailed { name, .. }) if name == "name"),
+                        "Expected ValidationFailed error for type '{}' with input '{}', but got {:?}",
+                        stringify!($type),
+                        value,
+                        result
+                    );
+                }
+            }
+        };
+    }
+
+    test_validators!(
+        test_range_validator,
+        i32,
+        "1",
+        Range::between(0, 10),
+        &["1", "5", "9"],
+        &["-1", "11"]
+    );
+
+    test_validators!(
+        test_string_validator,
+        String,
+        "default",
+        ValidString::in_list(&["good", "values", "default"]),
+        &["good", "values", "default"],
+        &["bad", "inputs", "DEFAULT"]
+    );
+
+    test_validators!(
+        test_list_validator,
+        Vec<String>,
+        "1",
+        ValidList::in_list(&["1", "2", "3"]),
+        &["1", "2", "3"],
+        &["4", "5", "6"]
+    );
+
+    #[test]
+    fn test_list_validator_any_non_duplicate_values() {
+        let allow_any_non_duplicate_values = ValidList::any_non_duplicate_values(true);
+
+        allow_any_non_duplicate_values
+            .validate("test.config", "a, b, c")
+            .unwrap();
+        allow_any_non_duplicate_values
+            .validate("test.config", "")
+            .unwrap();
+
+        // Test the "null allowed" case at the `from_props` level.
+        #[derive(EasyConfig, Debug)]
+        struct TestConfig {
+            #[attr(validator = ValidList::any_non_duplicate_values(true))]
+            v: Option<Vec<String>>, // `Option` makes it "null allowed"
+        }
+        let config = TestConfig::from_props(&HashMap::new()).unwrap();
+        assert_eq!(config.v, None);
+
+        let res = allow_any_non_duplicate_values.validate("test.config", "a, a");
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..}) if res.as_ref().unwrap_err().to_string()
+                .eq("Validation failed for name 'test.config': \
+                Configuration 'test.config' values must not be duplicated.")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+
+        let res = allow_any_non_duplicate_values.validate("test.config", "a,,b"); // Contains an empty string
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..})
+                if res.as_ref().unwrap_err().to_string().eq("Validation failed for name 'test.config': \
+                Configuration 'test.config' values must not be empty.")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+
+        let allow_any_non_duplicate_values = ValidList::any_non_duplicate_values(false);
+
+        allow_any_non_duplicate_values
+            .validate("test.config", "a, b, c")
+            .unwrap();
+
+        let res = allow_any_non_duplicate_values.validate("test.config", "");
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..}) if res.as_ref().unwrap_err().to_string()
+                .eq("Validation failed for name 'test.config': \
+                Configuration 'test.config' must not be empty. Valid values include: any non-empty value")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+
+        let res = allow_any_non_duplicate_values.validate("test.config", "a, a");
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..}) if res.as_ref().unwrap_err().to_string()
+                .eq("Validation failed for name 'test.config': \
+                Configuration 'test.config' values must not be duplicated.")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+
+        let res = allow_any_non_duplicate_values.validate("test.config", "a,,b"); // Contains an empty string
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..})
+                if res.as_ref().unwrap_err().to_string().eq("Validation failed for name 'test.config': \
+                Configuration 'test.config' values must not be empty.")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+    }
+
+    #[test]
+    fn test_list_validator_in() {
+        let allow_empty_validator = ValidList::in_list(&["a", "b", "c"]);
+
+        allow_empty_validator
+            .validate("test.config", "a, b")
+            .unwrap();
+        allow_empty_validator.validate("test.config", "").unwrap();
+
+        let res = allow_empty_validator.validate("test.config", "d");
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..}) if res.as_ref().unwrap_err().to_string()
+                .eq("Validation failed for name 'test.config': \
+                Invalid value 'd' for configuration 'test.config': String must be one of: a, b, c")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+
+        let res = allow_empty_validator.validate("test.config", "a, a");
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..}) if res.as_ref().unwrap_err().to_string()
+                .eq("Validation failed for name 'test.config': \
+                Configuration 'test.config' values must not be duplicated.")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+
+        let res = allow_empty_validator.validate("test.config", "a,,b"); // Contains an empty string
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..})
+                if res.as_ref().unwrap_err().to_string().eq("Validation failed for name 'test.config': \
+                Configuration 'test.config' values must not be empty.")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+
+        let not_allow_empty_validator = ValidList::in_list_allow_empty(false, &["a", "b", "c"]);
+
+        not_allow_empty_validator
+            .validate("test.config", "a, b")
+            .unwrap();
+
+        let res = not_allow_empty_validator.validate("test.config", "");
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..}) if res.as_ref().unwrap_err().to_string()
+                .eq("Validation failed for name 'test.config': \
+                Configuration 'test.config' must not be empty. Valid values include: [a, b, c] (empty config empty not allowed)")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+
+        let res = not_allow_empty_validator.validate("test.config", "a, a");
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..}) if res.as_ref().unwrap_err().to_string()
+                .eq("Validation failed for name 'test.config': \
+                Configuration 'test.config' values must not be duplicated.")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+
+        let res = not_allow_empty_validator.validate("test.config", "d");
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..}) if res.as_ref().unwrap_err().to_string()
+                .eq("Validation failed for name 'test.config': \
+                Invalid value 'd' for configuration 'test.config': String must be one of: a, b, c")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+
+        let res = not_allow_empty_validator.validate("test.config", "a,,b"); // Contains an empty string
+        assert!(
+            matches!(&res, Err(ConfigError::ValidationFailed{..})
+                if res.as_ref().unwrap_err().to_string().eq("Validation failed for name 'test.config': \
+                Configuration 'test.config' values must not be empty.")),
+            "Expected ValidationFailed error but got {:?}",
+            &res
+        );
+    }
 }

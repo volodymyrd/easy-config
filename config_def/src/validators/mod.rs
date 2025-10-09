@@ -2,6 +2,7 @@ use crate::ConfigError;
 use std::fmt::Display;
 
 pub(crate) mod range;
+pub(crate) mod valid_list;
 pub(crate) mod valid_string;
 
 /// A trait for any stateful validation logic.

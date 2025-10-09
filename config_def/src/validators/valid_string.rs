@@ -8,8 +8,8 @@ pub struct ValidString {
 }
 
 impl ValidString {
-    // Private constructor.
-    fn new(valid_strings: Vec<String>) -> Self {
+    // Crate private constructor.
+    pub(crate) fn new(valid_strings: Vec<String>) -> Self {
         Self { valid_strings }
     }
 
@@ -21,6 +21,10 @@ impl ValidString {
         Box::new(Self::new(
             valid_strings.iter().map(|s| s.to_string()).collect(),
         ))
+    }
+
+    pub(crate) fn valid_strings(&self) -> &Vec<String> {
+        self.valid_strings.as_ref()
     }
 }
 
