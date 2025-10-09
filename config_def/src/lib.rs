@@ -112,6 +112,12 @@ impl ConfigValue for bool {
     }
 }
 
+impl ConfigValue for usize {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
 impl ConfigValue for i32 {
     fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
         parse_config_value(key, s)
