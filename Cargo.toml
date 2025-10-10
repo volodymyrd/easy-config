@@ -4,7 +4,7 @@ members = ["config_def", "config_def_macros"]
 resolver = "2"
 
 [workspace.package]
-version = "0.0.5"
+version = "0.0.6"
 authors = ["Volodymyr Dotsenko <volodymyrdotsenko@gmail.com>"]
 repository = "https://github.com/volodymyrd/easy-config"
 homepage = "https://github.com/volodymyrd/easy-config"
@@ -13,7 +13,7 @@ edition = "2024"
 description = "A Rust library for defining and validating application configurations, inspired by Apache Kafka's ConfigDef"
 
 [workspace.dependencies]
-easy-config-macros = { path = "config_def_macros", version = "0.0.5" }
+easy-config-macros = { path = "config_def_macros", version = "0.0.6" }
 getset = "0.1.6"
 indexmap = "2"
 once_cell = "1.21.3"
