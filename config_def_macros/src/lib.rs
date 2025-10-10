@@ -39,7 +39,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
             // 1. Generate code for the ConfigDef builder.
             // This delegates to the inner struct's `config_def` and merges the keys.
             config_key_defs.push(quote! {
-                for key in <#ty as FromConfigDef>::config_def()?.config_keys.values() {
+                for key in <#ty as FromConfigDef>::config_def()?.config_keys().values() {
                     builder.define(key.clone())?;
                 }
             });
@@ -50,7 +50,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                 #field_name: <#ty as FromConfigDef>::from_props(props)?
             });
         } else {
-            let mut generate_getters = false;
+            let mut generate_getter = false;
             let field_name_str = field_name.to_string();
             let mut name_attr = None;
             let mut docs = None;
@@ -67,8 +67,8 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
 
                     for meta in parsed_attrs {
                         match meta {
-                            Meta::Path(path) if path.is_ident("getters") => {
-                                generate_getters = true;
+                            Meta::Path(path) if path.is_ident("getter") => {
+                                generate_getter = true;
                             }
                             Meta::NameValue(nv) => {
                                 let ident = nv.path.get_ident().unwrap().to_string();
@@ -97,7 +97,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                 }
             }
 
-            if generate_getters {
+            if generate_getter {
                 // We always return a borrow (`&T`). This is safe for all types.
                 // For Copy types, the user can dereference with `*`.
                 getter_methods.push(quote! {

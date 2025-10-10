@@ -66,6 +66,10 @@ impl ConfigDef {
     pub fn find_key(&self, name: &str) -> Option<&ConfigKey> {
         self.config_keys.get(name)
     }
+
+    pub fn config_keys(&self) -> &IndexMap<&'static str, ConfigKey> {
+        &self.config_keys
+    }
 }
 
 impl ConfigDefBuilder {
@@ -626,10 +630,11 @@ mod tests {
 
             #[derive(Debug, PartialEq, EasyConfig)]
             pub struct TestConfig1 {
-                #[attr(default = "5", validator=Range::between(0, 14), importance = Importance::HIGH,
-            documentation = "docs", getters)]
+                #[attr(default = "5", validator=Range::between(0, 14),
+                importance = Importance::HIGH, documentation = "docs", getter)]
                 a1: i32,
-                #[attr(default = "hello", importance = Importance::HIGH, documentation = "docs", getters)]
+                #[attr(default = "hello", importance = Importance::HIGH, documentation = "docs",
+                getter)]
                 b1: String,
             }
         }
@@ -639,10 +644,10 @@ mod tests {
 
             #[derive(Debug, PartialEq, EasyConfig)]
             pub struct TestConfig2 {
-                #[attr(default = "5", validator=Range::between(0, 14), importance = Importance::HIGH,
-            documentation = "docs", getters)]
+                #[attr(default = "5", validator=Range::between(0, 14),
+                importance = Importance::HIGH, documentation = "docs", getter)]
                 a2: i32,
-                #[attr(importance = Importance::HIGH, documentation = "docs", getters)]
+                #[attr(importance = Importance::HIGH, documentation = "docs", getter)]
                 b2: String,
             }
         }
