@@ -13,6 +13,8 @@ mod validators;
 
 pub trait FromConfigDef: Sized {
     fn from_props(props: &HashMap<String, String>) -> Result<Self, ConfigError>;
+    // The contract for getting the schema.
+    fn config_def() -> Result<&'static ConfigDef, ConfigError>;
 }
 
 pub trait ConfigValue: Sized {
@@ -67,20 +69,19 @@ impl ConfigDef {
 }
 
 impl ConfigDefBuilder {
-    pub fn define(&mut self, key: ConfigKey) -> &mut Self {
+    pub fn define(&mut self, key: ConfigKey) -> Result<&mut Self, ConfigError> {
         if self.config_keys.contains_key(key.name) {
             panic!("Configuration key {} is defined twice", key.name);
         }
 
-        if let Some(group_name) = key.group.as_ref() {
+        if let Some(group_name) = key.group {
             let group_string = group_name.to_string();
             if !self.groups.contains(&group_string) {
                 self.groups.push_back(group_string);
             }
         }
-
         self.config_keys.insert(key.name, key);
-        self
+        Ok(self)
     }
 
     pub fn build(self) -> ConfigDef {
@@ -167,6 +168,7 @@ impl ConfigValue for Password {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use easy_config_macros::EasyConfig;
     use std::collections::HashMap;
     use std::fmt::Debug;
 
@@ -615,5 +617,57 @@ mod tests {
             "Expected ValidationFailed error but got {:?}",
             &res
         );
+    }
+
+    #[test]
+    fn test_merge() {
+        mod test_conf1 {
+            use super::prelude::*;
+
+            #[derive(Debug, PartialEq, EasyConfig)]
+            pub struct TestConfig1 {
+                #[attr(default = "5", validator=Range::between(0, 14), importance = Importance::HIGH,
+            documentation = "docs", getters)]
+                a1: i32,
+                #[attr(default = "hello", importance = Importance::HIGH, documentation = "docs", getters)]
+                b1: String,
+            }
+        }
+
+        mod test_conf2 {
+            use super::prelude::*;
+
+            #[derive(Debug, PartialEq, EasyConfig)]
+            pub struct TestConfig2 {
+                #[attr(default = "5", validator=Range::between(0, 14), importance = Importance::HIGH,
+            documentation = "docs", getters)]
+                a2: i32,
+                #[attr(importance = Importance::HIGH, documentation = "docs", getters)]
+                b2: String,
+            }
+        }
+
+        #[derive(Debug, PartialEq, EasyConfig)]
+        struct MergeTestConfig {
+            #[merge]
+            config1: test_conf1::TestConfig1,
+            #[merge]
+            config2: test_conf2::TestConfig2,
+        }
+
+        let mut props = HashMap::new();
+        props.insert("a1".to_string(), "1   ".to_string());
+        props.insert("a2".to_string(), " 2 ".to_string());
+        // "b1" is omitted to test the default value.
+        props.insert("b2".to_string(), "value2".to_string());
+
+        // Act: Parse the properties into the strongly typed struct.
+        let config = MergeTestConfig::from_props(&props).unwrap();
+
+        // Assert: Check the final parsed values.
+        assert_eq!(config.config1.a1(), &1);
+        assert_eq!(config.config2.a2(), &2);
+        assert_eq!(config.config1.b1(), "hello");
+        assert_eq!(config.config2.b2(), "value2");
     }
 }
