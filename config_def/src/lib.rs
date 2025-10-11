@@ -65,25 +65,30 @@ impl ConfigDef {
 impl TryFrom<Vec<ConfigKey>> for ConfigDef {
     type Error = ConfigError;
 
+    /// Creates a `ConfigDef` from a vector of `ConfigKey`s, checking for duplicates.
     fn try_from(keys: Vec<ConfigKey>) -> Result<Self, Self::Error> {
         let mut config_keys = IndexMap::with_capacity(keys.len());
-        let mut groups = LinkedList::new();
-        let mut seen_groups = HashSet::new(); // To keep track of groups already added to the list
+        let mut seen_groups = HashSet::new();
 
         for key in keys {
-            if config_keys.contains_key(key.name) {
+            if let Some(existing_key) = config_keys.insert(key.name, key) {
                 return Err(ConfigError::ValidationFailed {
-                    name: key.name.to_string(),
-                    message: format!("Configuration key '{}' is defined twice.", key.name),
+                    name: existing_key.name.to_string(),
+                    message: format!(
+                        "Configuration key '{}' is defined twice.",
+                        existing_key.name
+                    ),
                 });
             }
-            if let Some(group_name) = key.group
-                && seen_groups.insert(group_name)
-            {
-                groups.push_back(group_name.to_string());
-            }
-            config_keys.insert(key.name, key);
         }
+
+        let groups: LinkedList<String> = config_keys
+            .values()
+            .filter_map(|k| k.group)
+            .filter(|&g| seen_groups.insert(g))
+            .map(String::from)
+            .collect();
+
         Ok(ConfigDef {
             config_keys,
             _groups: groups,
