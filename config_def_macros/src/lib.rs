@@ -142,13 +142,10 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                     panic!("Option must have a generic type argument")
                 };
 
+                // Logic for `Option<T>` fields
                 quote! {
                     #field_name: {
-                        let meta = def.find_key(#lookup_key).ok_or_else(|| ConfigError::MissingName(#lookup_key.to_string()))?;
-                        if let Some(val_str) = props.get(#lookup_key).map(|s| s.as_str()).or(meta.default_value) {
-                            if let Some(validator) = &meta.validator {
-                                validator.validate(#lookup_key, val_str)?;
-                            }
+                        if let Some(val_str) = get_value(#lookup_key).ok() {
                             Some(<#inner_ty as ConfigValue>::parse(#lookup_key, val_str)?)
                         } else {
                             None
@@ -156,8 +153,12 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                     }
                 }
             } else {
+                // Logic for required fields (non-Option)
                 quote! {
-                    #field_name: <#ty as ConfigValue>::parse(#lookup_key, get_value(#lookup_key)?)?
+                    #field_name: {
+                        let val_str = get_value(#lookup_key)?;
+                        <#ty as ConfigValue>::parse(#lookup_key, val_str)?
+                    }
                 }
             };
             from_props_fields.push(from_props_quote);
@@ -165,12 +166,6 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
     }
 
     let expanded = quote! {
-        // This `impl` block contains the generated getters.
-        // It's separate from the other impls for clarity.
-        impl #struct_name {
-            #(#getter_methods)*
-        }
-
         static CONFIG_DEF: once_cell::sync::OnceCell<ConfigDef> = once_cell::sync::OnceCell::new();
         impl #struct_name {
             pub fn config_def() -> Result<&'static ConfigDef, ConfigError> {
@@ -182,11 +177,14 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                     ConfigDef::try_from(keys)
                 })
             }
+
+            // Place generated getters in the main impl block
+            #(#getter_methods)*
         }
         impl FromConfigDef for #struct_name {
             fn from_props(props: &std::collections::HashMap<String, String>) -> Result<Self, ConfigError> {
                 let def = Self::config_def()?;
-                let get_value = |name: &str| -> Result<_, ConfigError> {
+                let get_value = |name: &str| -> Result<&str, ConfigError> {
                     let meta = def.find_key(name).ok_or_else(|| ConfigError::MissingName(name.to_string()))?;
                     let val_str = props.get(name).map(|s| s.as_str()).or(meta.default_value)
                         .ok_or_else(|| ConfigError::MissingName(name.to_string()))?;
@@ -198,7 +196,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                 Ok(Self { #(#from_props_fields),* })
             }
 
-             // Re-direct the trait method to our generated inherent method
+            // Re-direct the trait method to our generated inherent method
             fn config_def() -> Result<&'static ConfigDef, ConfigError> {
                 Self::config_def()
             }
@@ -208,16 +206,17 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
 }
 
 // --- Helper Functions for Attribute Parsing ---
-
-/// Extracts a `String` from a string literal expression (e.g., `"hello"`).
-/// Returns a `syn::Error` if the expression is not a string literal.
 fn get_string_lit_from_expr(expr: &Expr) -> syn::Result<String> {
-    if let Expr::Lit(expr_lit) = expr
-        && let Lit::Str(lit_str) = &expr_lit.lit
-    {
-        return Ok(lit_str.value());
+    match expr {
+        Expr::Lit(expr_lit) => match &expr_lit.lit {
+            Lit::Str(lit_str) => Ok(lit_str.value()),
+            _ => Err(syn::Error::new_spanned(expr, "Expected a string literal")),
+        },
+        _ => Err(syn::Error::new_spanned(
+            expr,
+            "Expected a literal expression",
+        )),
     }
-    Err(syn::Error::new_spanned(expr, "Expected a string literal"))
 }
 
 fn get_expr(expr: &Expr) -> syn::Result<Expr> {
