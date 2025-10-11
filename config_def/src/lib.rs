@@ -52,17 +52,7 @@ pub struct ConfigDef {
     _configs_with_no_parent: HashSet<String>,
 }
 
-#[derive(Default)]
-pub struct ConfigDefBuilder {
-    config_keys: IndexMap<&'static str, ConfigKey>,
-    groups: LinkedList<String>,
-}
-
 impl ConfigDef {
-    pub fn builder() -> ConfigDefBuilder {
-        ConfigDefBuilder::default()
-    }
-
     pub fn find_key(&self, name: &str) -> Option<&ConfigKey> {
         self.config_keys.get(name)
     }
@@ -72,28 +62,33 @@ impl ConfigDef {
     }
 }
 
-impl ConfigDefBuilder {
-    pub fn define(&mut self, key: ConfigKey) -> Result<&mut Self, ConfigError> {
-        if self.config_keys.contains_key(key.name) {
-            panic!("Configuration key {} is defined twice", key.name);
-        }
+impl TryFrom<Vec<ConfigKey>> for ConfigDef {
+    type Error = ConfigError;
 
-        if let Some(group_name) = key.group {
-            let group_string = group_name.to_string();
-            if !self.groups.contains(&group_string) {
-                self.groups.push_back(group_string);
+    fn try_from(keys: Vec<ConfigKey>) -> Result<Self, Self::Error> {
+        let mut config_keys = IndexMap::with_capacity(keys.len());
+        let mut groups = LinkedList::new();
+        let mut seen_groups = HashSet::new(); // To keep track of groups already added to the list
+
+        for key in keys {
+            if config_keys.contains_key(key.name) {
+                return Err(ConfigError::ValidationFailed {
+                    name: key.name.to_string(),
+                    message: format!("Configuration key '{}' is defined twice.", key.name),
+                });
             }
+            if let Some(group_name) = key.group
+                && seen_groups.insert(group_name)
+            {
+                groups.push_back(group_name.to_string());
+            }
+            config_keys.insert(key.name, key);
         }
-        self.config_keys.insert(key.name, key);
-        Ok(self)
-    }
-
-    pub fn build(self) -> ConfigDef {
-        ConfigDef {
-            config_keys: self.config_keys,
-            _groups: self.groups,
-            _configs_with_no_parent: HashSet::new(),
-        }
+        Ok(ConfigDef {
+            config_keys,
+            _groups: groups,
+            ..Default::default()
+        })
     }
 }
 

@@ -22,7 +22,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
         panic!("Only structs are supported")
     };
 
-    let mut config_key_defs = Vec::new();
+    let mut config_key_inits = Vec::new();
     let mut from_props_fields = Vec::new();
     let mut getter_methods = Vec::new();
 
@@ -35,17 +35,10 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
 
         if is_merge_field {
             // --- Logic for a `#[merge]` field ---
+            config_key_inits.push(quote! {
+                <#ty as FromConfigDef>::config_def()?.config_keys().values().cloned()
+            }); // This will be flattened later
 
-            // 1. Generate code for the ConfigDef builder.
-            // This delegates to the inner struct's `config_def` and merges the keys.
-            config_key_defs.push(quote! {
-                for key in <#ty as FromConfigDef>::config_def()?.config_keys().values() {
-                    builder.define(key.clone())?;
-                }
-            });
-
-            // 2. Generate code for the `from_props` field initializer.
-            // This delegates parsing to the inner struct's `from_props`.
             from_props_fields.push(quote! {
                 #field_name: <#ty as FromConfigDef>::from_props(props)?
             });
@@ -122,15 +115,15 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                 .map(|g| quote! { Some(#g) })
                 .unwrap_or(quote! { None });
 
-            config_key_defs.push(quote! {
-                builder.define(ConfigKey {
+            config_key_inits.push(quote! {
+                std::iter::once(ConfigKey {
                     name: #lookup_key,
                     documentation: #docs_tokens,
                     default_value: #default_tokens,
                     importance: #importance_tokens,
                     validator: #validator_tokens,
                     group: #group_tokens,
-                })?;
+                })
             });
 
             let from_props_quote = if let Type::Path(type_path) = ty
@@ -182,9 +175,11 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
         impl #struct_name {
             pub fn config_def() -> Result<&'static ConfigDef, ConfigError> {
                 CONFIG_DEF.get_or_try_init(|| {
-                    let mut builder = ConfigDef::builder();
-                    #(#config_key_defs)*
-                    Ok(builder.build())
+                    let keys: Vec<ConfigKey> = [
+                        #(#config_key_inits),*
+                    ].into_iter().flatten().collect();
+
+                    ConfigDef::try_from(keys)
                 })
             }
         }
