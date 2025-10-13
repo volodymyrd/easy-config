@@ -70,9 +70,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                                         name_attr =
                                             Some(get_string_lit_from_expr(&nv.value).unwrap())
                                     }
-                                    "documentation" => {
-                                        docs = Some(get_string_lit_from_expr(&nv.value).unwrap())
-                                    }
+                                    "documentation" => docs = Some(get_expr(&nv.value).unwrap()),
                                     "default" => {
                                         default = Some(get_string_lit_from_expr(&nv.value).unwrap())
                                     }
@@ -214,7 +212,7 @@ fn get_string_lit_from_expr(expr: &Expr) -> syn::Result<String> {
         },
         _ => Err(syn::Error::new_spanned(
             expr,
-            "Expected a literal expression",
+            "Expected a string literal expression",
         )),
     }
 }

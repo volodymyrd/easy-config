@@ -180,8 +180,8 @@ mod tests {
     fn test_basic_types() {
         #[derive(Debug, PartialEq, EasyConfig)]
         struct TestConfig {
-            #[attr(default = "5", validator=Range::between(0, 14), importance = Importance::HIGH,
-            documentation = "docs")]
+            #[attr(default = "5", validator = Range::between(0, 14), importance = Importance::HIGH,
+            documentation = concat!("Docs for 'a'. ", "Must be between 0 and 14."))]
             a: i32,
             #[attr(importance = Importance::HIGH, documentation = "docs")]
             b: i64,
@@ -193,7 +193,7 @@ mod tests {
             e: f64,
             #[attr(importance = Importance::HIGH, documentation = "docs")]
             f: String,
-            #[attr(name="prop.f", importance = Importance::HIGH, documentation = "docs")]
+            #[attr(name = "prop.f", importance = Importance::HIGH, documentation = "docs")]
             f1: String,
             #[attr(importance = Importance::HIGH, documentation = "docs")]
             g: bool,
