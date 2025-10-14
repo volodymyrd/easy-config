@@ -74,9 +74,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                                     "default" => {
                                         default = Some(get_string_lit_from_expr(&nv.value).unwrap())
                                     }
-                                    "group" => {
-                                        group = Some(get_string_lit_from_expr(&nv.value).unwrap())
-                                    }
+                                    "group" => group = Some(get_expr(&nv.value).unwrap()),
                                     "importance" => importance = Some(get_expr(&nv.value).unwrap()),
                                     "validator" => validator = Some(get_expr(&nv.value).unwrap()),
                                     _ => panic!("Unknown attribute: {}", ident),
@@ -112,7 +110,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                 .map(|v| quote! { Some(#v) })
                 .unwrap_or(quote! { None });
             let group_tokens = group
-                .map(|g| quote! { Some(#g) })
+                .map(|g| quote! { Some(Into::<String>::into(#g)) })
                 .unwrap_or(quote! { None });
 
             config_key_inits.push(quote! {

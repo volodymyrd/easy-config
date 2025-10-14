@@ -35,7 +35,7 @@ pub struct ConfigKey {
     pub default_value: Option<&'static str>,
     pub validator: Option<Box<dyn Validator>>,
     pub importance: Option<Importance>,
-    pub group: Option<&'static str>,
+    pub group: Option<String>,
     // pub order_in_group: Option<usize>,
     // pub width: Width,
     // pub display_name: Option<&'static str>,
@@ -84,7 +84,7 @@ impl TryFrom<Vec<ConfigKey>> for ConfigDef {
 
         let groups: LinkedList<String> = config_keys
             .values()
-            .filter_map(|k| k.group)
+            .filter_map(|k| k.group.as_ref())
             .filter(|&g| seen_groups.insert(g))
             .map(String::from)
             .collect();
@@ -185,7 +185,8 @@ mod tests {
             #[attr(default = "5", validator = Range::between(0, 14), importance = Importance::HIGH,
             documentation = format!("{DOC} Must be between 0 and 14."))]
             a: i32,
-            #[attr(importance = Importance::HIGH, documentation = "docs".to_string())]
+            #[attr(importance = Importance::HIGH, documentation = "docs".to_string(),
+            group = "group")]
             b: i64,
             #[attr(default = "hello", importance = Importance::HIGH, documentation = "docs")]
             c: String,
