@@ -71,9 +71,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                                             Some(get_string_lit_from_expr(&nv.value).unwrap())
                                     }
                                     "documentation" => docs = Some(get_expr(&nv.value).unwrap()),
-                                    "default" => {
-                                        default = Some(get_string_lit_from_expr(&nv.value).unwrap())
-                                    }
+                                    "default" => default = Some(get_expr(&nv.value).unwrap()),
                                     "group" => group = Some(get_expr(&nv.value).unwrap()),
                                     "importance" => importance = Some(get_expr(&nv.value).unwrap()),
                                     "validator" => validator = Some(get_expr(&nv.value).unwrap()),
@@ -101,7 +99,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                 .map(|d| quote! { Some(Into::<String>::into(#d)) })
                 .unwrap_or(quote! { None });
             let default_tokens = default
-                .map(|d| quote! { Some(#d) })
+                .map(|d| quote! { Some(Into::<String>::into(#d)) })
                 .unwrap_or(quote! { None });
             let importance_tokens = importance
                 .map(|i| quote! { Some(#i) })
@@ -184,7 +182,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                 let def = Self::config_def()?;
                 let get_value = |name: &str| -> Result<&str, ConfigError> {
                     let meta = def.find_key(name).ok_or_else(|| ConfigError::MissingName(name.to_string()))?;
-                    let val_str = props.get(name).map(|s| s.as_str()).or(meta.default_value)
+                    let val_str = props.get(name).map(|s| s.as_str()).or(meta.default_value.as_deref())
                         .ok_or_else(|| ConfigError::MissingName(name.to_string()))?;
                     if let Some(validator) = &meta.validator {
                         validator.validate(name, val_str)?;

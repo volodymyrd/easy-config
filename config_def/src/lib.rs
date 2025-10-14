@@ -32,7 +32,7 @@ pub enum Importance {
 pub struct ConfigKey {
     pub name: &'static str,
     pub documentation: Option<String>,
-    pub default_value: Option<&'static str>,
+    pub default_value: Option<String>,
     pub validator: Option<Box<dyn Validator>>,
     pub importance: Option<Importance>,
     pub group: Option<String>,
