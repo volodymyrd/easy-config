@@ -176,6 +176,7 @@ mod tests {
     use std::collections::HashMap;
     use std::fmt::Debug;
 
+    const H: &str = "h";
     const DOC: &str = "Docs for 'a'. ";
 
     #[test]
@@ -200,7 +201,7 @@ mod tests {
             f1: String,
             #[attr(importance = Importance::HIGH, documentation = "docs")]
             g: bool,
-            #[attr(importance = Importance::HIGH, documentation = "docs")]
+            #[attr(name=H, importance = Importance::HIGH, documentation = "docs")]
             h: bool,
             #[attr(importance = Importance::HIGH, documentation = "docs")]
             i: bool,

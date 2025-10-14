@@ -3,8 +3,8 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    Data, DeriveInput, Expr, Fields, GenericArgument, Lit, Meta, PathArguments, Type,
-    parse_macro_input, punctuated::Punctuated, token,
+    Data, DeriveInput, Expr, Fields, GenericArgument, Meta, PathArguments, Type, parse_macro_input,
+    punctuated::Punctuated, token,
 };
 
 #[proc_macro_derive(EasyConfig, attributes(attr, merge))]
@@ -66,10 +66,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                             Meta::NameValue(nv) => {
                                 let ident = nv.path.get_ident().unwrap().to_string();
                                 match ident.as_str() {
-                                    "name" => {
-                                        name_attr =
-                                            Some(get_string_lit_from_expr(&nv.value).unwrap())
-                                    }
+                                    "name" => name_attr = Some(get_expr(&nv.value).unwrap()),
                                     "documentation" => docs = Some(get_expr(&nv.value).unwrap()),
                                     "default" => default = Some(get_expr(&nv.value).unwrap()),
                                     "group" => group = Some(get_expr(&nv.value).unwrap()),
@@ -94,7 +91,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                 });
             }
 
-            let lookup_key = name_attr.clone().unwrap_or_else(|| field_name_str.clone());
+            let lookup_key = name_attr.map_or(quote! { #field_name_str }, |e| quote! { #e });
             let docs_tokens = docs
                 .map(|d| quote! { Some(Into::<String>::into(#d)) })
                 .unwrap_or(quote! { None });
@@ -199,20 +196,6 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
         }
     };
     TokenStream::from(expanded)
-}
-
-// --- Helper Functions for Attribute Parsing ---
-fn get_string_lit_from_expr(expr: &Expr) -> syn::Result<String> {
-    match expr {
-        Expr::Lit(expr_lit) => match &expr_lit.lit {
-            Lit::Str(lit_str) => Ok(lit_str.value()),
-            _ => Err(syn::Error::new_spanned(expr, "Expected a string literal")),
-        },
-        _ => Err(syn::Error::new_spanned(
-            expr,
-            "Expected a string literal expression",
-        )),
-    }
 }
 
 fn get_expr(expr: &Expr) -> syn::Result<Expr> {
