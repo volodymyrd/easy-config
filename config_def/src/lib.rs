@@ -31,7 +31,7 @@ pub enum Importance {
 #[derive(Debug, Clone)]
 pub struct ConfigKey {
     pub name: &'static str,
-    pub documentation: Option<&'static str>,
+    pub documentation: Option<String>,
     pub default_value: Option<&'static str>,
     pub validator: Option<Box<dyn Validator>>,
     pub importance: Option<Importance>,
@@ -176,14 +176,16 @@ mod tests {
     use std::collections::HashMap;
     use std::fmt::Debug;
 
+    const DOC: &str = "Docs for 'a'. ";
+
     #[test]
     fn test_basic_types() {
         #[derive(Debug, PartialEq, EasyConfig)]
         struct TestConfig {
             #[attr(default = "5", validator = Range::between(0, 14), importance = Importance::HIGH,
-            documentation = concat!("Docs for 'a'. ", "Must be between 0 and 14."))]
+            documentation = format!("{DOC} Must be between 0 and 14."))]
             a: i32,
-            #[attr(importance = Importance::HIGH, documentation = "docs")]
+            #[attr(importance = Importance::HIGH, documentation = "docs".to_string())]
             b: i64,
             #[attr(default = "hello", importance = Importance::HIGH, documentation = "docs")]
             c: String,

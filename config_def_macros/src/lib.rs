@@ -99,7 +99,9 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
             }
 
             let lookup_key = name_attr.clone().unwrap_or_else(|| field_name_str.clone());
-            let docs_tokens = docs.map(|d| quote! { Some(#d) }).unwrap_or(quote! { None });
+            let docs_tokens = docs
+                .map(|d| quote! { Some(Into::<String>::into(#d)) })
+                .unwrap_or(quote! { None });
             let default_tokens = default
                 .map(|d| quote! { Some(#d) })
                 .unwrap_or(quote! { None });
