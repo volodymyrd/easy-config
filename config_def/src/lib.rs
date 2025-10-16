@@ -117,7 +117,49 @@ impl ConfigValue for bool {
     }
 }
 
+impl ConfigValue for u8 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for u16 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for u32 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for u64 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for u128 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
 impl ConfigValue for usize {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for i8 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for i16 {
     fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
         parse_config_value(key, s)
     }
@@ -130,6 +172,18 @@ impl ConfigValue for i32 {
 }
 
 impl ConfigValue for i64 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for i128 {
+    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
+        parse_config_value(key, s)
+    }
+}
+
+impl ConfigValue for isize {
     fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
         parse_config_value(key, s)
     }
