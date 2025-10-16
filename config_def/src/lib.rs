@@ -29,19 +29,20 @@ pub enum Importance {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ConfigKey {
-    pub name: &'static str,
-    pub documentation: Option<String>,
-    pub default_value: Option<String>,
-    pub validator: Option<Box<dyn Validator>>,
-    pub importance: Option<Importance>,
-    pub group: Option<String>,
+    name: &'static str,
+    documentation: Option<String>,
+    default_value: Option<String>,
+    validator: Option<Box<dyn Validator>>,
+    importance: Option<Importance>,
+    group: Option<String>,
     // pub order_in_group: Option<usize>,
     // pub width: Width,
     // pub display_name: Option<&'static str>,
     // pub dependents: Vec<&'static str>,
     // pub recommender: Recommender,
-    // pub internal_config: bool,
+    internal_config: bool,
     // pub alternative_string: Option<&'static str>,
 }
 
@@ -293,6 +294,23 @@ mod tests {
         assert_eq!(config.i, true);
         assert_eq!(config.j, Password::new("password".to_string()));
         assert_eq!(config.j.to_string(), "[hidden]");
+    }
+
+    #[test]
+    fn test_can_add_internal_config() {
+        const CONFIG_NAME: &'static str = "internal.config";
+        #[derive(Debug, PartialEq, EasyConfig)]
+        struct TestConfig {
+            #[attr(name = CONFIG_NAME, importance = Importance::LOW)]
+            val: String,
+        }
+
+        let mut props = HashMap::new();
+        props.insert(CONFIG_NAME.to_string(), "value".to_string());
+
+        let config = TestConfig::from_props(&props).unwrap();
+
+        assert_eq!(config.val, "value");
     }
 
     #[test]

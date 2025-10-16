@@ -3,8 +3,8 @@ extern crate proc_macro;
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    Data, DeriveInput, Expr, Fields, GenericArgument, Meta, PathArguments, Type, parse_macro_input,
-    punctuated::Punctuated, token,
+    Data, DeriveInput, Expr, Fields, GenericArgument, Lit, Meta, PathArguments, Type,
+    parse_macro_input, punctuated::Punctuated, token,
 };
 
 #[proc_macro_derive(EasyConfig, attributes(attr, merge))]
@@ -51,6 +51,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
             let mut importance = None;
             let mut validator = None;
             let mut group = None;
+            let mut internal_config = false;
 
             for attr in &f.attrs {
                 if attr.path().is_ident("attr") {
@@ -72,6 +73,9 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                                     "group" => group = Some(get_expr(&nv.value).unwrap()),
                                     "importance" => importance = Some(get_expr(&nv.value).unwrap()),
                                     "validator" => validator = Some(get_expr(&nv.value).unwrap()),
+                                    "internal_config" => {
+                                        internal_config = get_bool_from_expr(&nv.value).unwrap()
+                                    }
                                     _ => panic!("Unknown attribute: {}", ident),
                                 }
                             }
@@ -116,6 +120,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                     importance: #importance_tokens,
                     validator: #validator_tokens,
                     group: #group_tokens,
+                    internal_config: #internal_config,
                 })
             });
 
@@ -196,6 +201,29 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
         }
     };
     TokenStream::from(expanded)
+}
+
+// --- Helper Functions for Attribute Parsing ---
+
+/// Extracts a `String` from a string literal expression (e.g., `"hello"`).
+/// Returns a `syn::Error` if the expression is not a string literal.
+#[allow(dead_code)]
+fn get_string_lit_from_expr(expr: &Expr) -> syn::Result<String> {
+    if let Expr::Lit(expr_lit) = expr
+        && let Lit::Str(lit_str) = &expr_lit.lit
+    {
+        return Ok(lit_str.value());
+    }
+    Err(syn::Error::new_spanned(expr, "Expected a string literal"))
+}
+
+fn get_bool_from_expr(expr: &Expr) -> syn::Result<bool> {
+    if let Expr::Lit(expr_lit) = expr
+        && let Lit::Bool(lit_str) = &expr_lit.lit
+    {
+        return Ok(lit_str.value());
+    }
+    Err(syn::Error::new_spanned(expr, "Expected a bool literal"))
 }
 
 fn get_expr(expr: &Expr) -> syn::Result<Expr> {
