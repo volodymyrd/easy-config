@@ -75,11 +75,11 @@ pub trait ConfigValue: Sized {
     /// The process is as follows:
     ///
     /// 1.  A field is defined with a strongly-typed default:
-    /// `#[attr(default = 5, validator = Range::between(0, 10))]`.
+    ///     `#[attr(default = 5, validator = Range::between(0, 10))]`.
     /// 2.  The macro stores the value `5` as an `i32`.
     /// 3.  When processing the configuration, the system retrieves this `i32` value.
     /// 4.  To validate it, the system calls `to_config_string()` on the `i32`, which produces
-    /// the `String` `"5"`.
+    ///     the `String` `"5"`.
     /// 5.  This string `"5"` is then passed to the `Range` validator's `validate` method.
     ///
     /// This ensures that the same validation logic is applied consistently to both

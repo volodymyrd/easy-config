@@ -80,20 +80,17 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                 let mut is_opt = false;
                 let mut inner = quote! { #field_ty };
 
-                if let Type::Path(type_path) = field_ty {
-                    if type_path.path.segments.len() == 1
-                        && type_path.path.segments[0].ident == "Option"
-                    {
-                        if let PathArguments::AngleBracketed(params) =
-                            &type_path.path.segments[0].arguments
-                        {
-                            if let Some(GenericArgument::Type(t)) = params.args.first() {
-                                is_opt = true;
-                                inner = quote! { #t };
-                            }
-                        }
-                    }
+                if let Type::Path(type_path) = field_ty
+                    && type_path.path.segments.len() == 1
+                    && type_path.path.segments[0].ident == "Option"
+                    && let PathArguments::AngleBracketed(params) =
+                        &type_path.path.segments[0].arguments
+                    && let Some(GenericArgument::Type(t)) = params.args.first()
+                {
+                    is_opt = true;
+                    inner = quote! { #t };
                 }
+
                 (is_opt, inner)
             };
 
@@ -219,10 +216,10 @@ impl ParsedAttributes {
                         "importance" => self.importance = Some(nv.value),
                         "validator" => self.validator = Some(nv.value),
                         "internal_config" => {
-                            if let Expr::Lit(expr_lit) = nv.value {
-                                if let Lit::Bool(lit_bool) = expr_lit.lit {
-                                    self.internal_config = lit_bool.value();
-                                }
+                            if let Expr::Lit(expr_lit) = nv.value
+                                && let Lit::Bool(lit_bool) = expr_lit.lit
+                            {
+                                self.internal_config = lit_bool.value();
                             }
                         }
                         _ => panic!("Unknown attribute: {}", ident),
