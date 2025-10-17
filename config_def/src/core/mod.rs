@@ -115,7 +115,7 @@ pub trait ConfigKeyTrait: Send + Sync {
     fn name(&self) -> &'static str;
     fn documentation(&self) -> Option<&String>;
     fn default_value_any(&self) -> Option<&dyn Any>;
-    fn validator(&self) -> Option<&Box<dyn Validator>>;
+    fn validator(&self) -> Option<&dyn Validator>;
     fn importance(&self) -> Option<Importance>;
     fn group(&self) -> Option<&String>;
     fn internal_config(&self) -> bool;
@@ -208,8 +208,8 @@ impl<T: 'static + Clone + Send + Sync + ConfigValue> ConfigKeyTrait for ConfigKe
     fn default_value_any(&self) -> Option<&dyn Any> {
         self.default_value.as_ref().map(|v| v as &dyn Any)
     }
-    fn validator(&self) -> Option<&Box<dyn Validator>> {
-        self.validator.as_ref()
+    fn validator(&self) -> Option<&dyn Validator> {
+        self.validator.as_deref()
     }
     fn importance(&self) -> Option<Importance> {
         self.importance
@@ -229,8 +229,8 @@ impl<T: 'static + Clone + Send + Sync + ConfigValue> ConfigKeyTrait for ConfigKe
 }
 
 impl ConfigDef {
-    pub fn find_key(&self, name: &str) -> Option<&Box<dyn ConfigKeyTrait>> {
-        self.config_keys.get(name)
+    pub fn find_key(&self, name: &str) -> Option<&dyn ConfigKeyTrait> {
+        self.config_keys.get(name).map(|k| k.as_ref())
     }
 
     pub fn config_keys(&self) -> &IndexMap<&'static str, Box<dyn ConfigKeyTrait>> {
