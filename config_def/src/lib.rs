@@ -1,227 +1,12 @@
-use indexmap::IndexMap;
-use prelude::*;
-use std::collections::{HashMap, HashSet, LinkedList};
-use std::fmt::Display;
-use std::str::FromStr;
-pub use types::password::Password;
-
 pub mod prelude;
 
+pub use prelude::*;
+pub use types::password::Password;
+
+mod core;
 mod errors;
 mod types;
 mod validators;
-
-pub trait FromConfigDef: Sized {
-    fn from_props(props: &HashMap<String, String>) -> Result<Self, ConfigError>;
-    // The contract for getting the schema.
-    fn config_def() -> Result<&'static ConfigDef, ConfigError>;
-}
-
-pub trait ConfigValue: Sized {
-    fn parse(key: &str, value_str: &str) -> Result<Self, ConfigError>;
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Importance {
-    HIGH,
-    MEDIUM,
-    LOW,
-}
-
-#[derive(Debug, Clone)]
-pub struct ConfigKey {
-    pub name: &'static str,
-    pub documentation: Option<String>,
-    pub default_value: Option<String>,
-    pub validator: Option<Box<dyn Validator>>,
-    pub importance: Option<Importance>,
-    pub group: Option<String>,
-    // pub order_in_group: Option<usize>,
-    // pub width: Width,
-    // pub display_name: Option<&'static str>,
-    // pub dependents: Vec<&'static str>,
-    // pub recommender: Recommender,
-    pub internal_config: bool,
-    // pub alternative_string: Option<&'static str>,
-}
-
-#[derive(Default)]
-pub struct ConfigDef {
-    config_keys: IndexMap<&'static str, ConfigKey>,
-    _groups: LinkedList<String>,
-    _configs_with_no_parent: HashSet<String>,
-}
-
-impl ConfigDef {
-    pub fn find_key(&self, name: &str) -> Option<&ConfigKey> {
-        self.config_keys.get(name)
-    }
-
-    pub fn config_keys(&self) -> &IndexMap<&'static str, ConfigKey> {
-        &self.config_keys
-    }
-}
-
-impl TryFrom<Vec<ConfigKey>> for ConfigDef {
-    type Error = ConfigError;
-
-    /// Creates a `ConfigDef` from a vector of `ConfigKey`s, checking for duplicates.
-    fn try_from(keys: Vec<ConfigKey>) -> Result<Self, Self::Error> {
-        let mut config_keys = IndexMap::with_capacity(keys.len());
-        let mut seen_groups = HashSet::new();
-
-        for key in keys {
-            if let Some(existing_key) = config_keys.insert(key.name, key) {
-                return Err(ConfigError::ValidationFailed {
-                    name: existing_key.name.to_string(),
-                    message: format!(
-                        "Configuration key '{}' is defined twice.",
-                        existing_key.name
-                    ),
-                });
-            }
-        }
-
-        let groups: LinkedList<String> = config_keys
-            .values()
-            .filter_map(|k| k.group.as_ref())
-            .filter(|&g| seen_groups.insert(g))
-            .map(String::from)
-            .collect();
-
-        Ok(ConfigDef {
-            config_keys,
-            _groups: groups,
-            ..Default::default()
-        })
-    }
-}
-
-fn parse_config_value<T>(key: &str, s: &str) -> Result<T, ConfigError>
-where
-    T: ConfigValue + Copy + FromStr + 'static, // The type must be parsable from a string.
-    <T as FromStr>::Err: Display,              // The error it produces must be printable
-{
-    s.trim()
-        .to_lowercase()
-        .parse()
-        .map_err(|e: <T as FromStr>::Err| ConfigError::InvalidValue {
-            name: key.to_string(),
-            message: e.to_string(),
-        })
-}
-
-impl ConfigValue for bool {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for u8 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for u16 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for u32 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for u64 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for u128 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for usize {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for i8 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for i16 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for i32 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for i64 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for i128 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for isize {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for f32 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for f64 {
-    fn parse(key: &str, s: &str) -> Result<Self, ConfigError> {
-        parse_config_value(key, s)
-    }
-}
-
-impl ConfigValue for String {
-    fn parse(_key: &str, s: &str) -> Result<Self, ConfigError> {
-        Ok(s.trim().to_string())
-    }
-}
-
-impl ConfigValue for Vec<String> {
-    fn parse(_key: &str, s: &str) -> Result<Self, ConfigError> {
-        let s = s.trim();
-        if s.is_empty() {
-            return Ok(Vec::new());
-        }
-        Ok(s.split(',').map(|item| item.trim().to_string()).collect())
-    }
-}
-
-impl ConfigValue for Password {
-    fn parse(_key: &str, s: &str) -> Result<Self, ConfigError> {
-        Ok(Password::new(s.trim().to_string()))
-    }
-}
 
 #[cfg(test)]
 mod tests {
@@ -243,7 +28,7 @@ mod tests {
             #[attr(importance = Importance::HIGH, documentation = "docs".to_string(),
             group = "group")]
             b: i64,
-            #[attr(default = "hello", importance = Importance::HIGH, documentation = "docs")]
+            #[attr(default = "hello".to_string(), importance = Importance::HIGH, documentation = "docs")]
             c: String,
             #[attr(importance = Importance::HIGH, documentation = "docs")]
             d: Vec<String>,
@@ -313,30 +98,6 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_default() {
-        #[derive(Debug, EasyConfig)]
-        struct TestConfig {
-            #[attr(default = "hello")] // "hello" is not a valid i32
-            _a: i32,
-        }
-
-        let result = TestConfig::from_props(&HashMap::new());
-
-        match result {
-            Err(ConfigError::InvalidValue { name, message }) => {
-                assert_eq!(name, "_a");
-                // The exact error message from `ParseIntError` can be a bit volatile,
-                // so checking `contains` is more robust than a direct equality check.
-                assert!(message.contains("invalid digit found in string"));
-            }
-            _ => {
-                // If we get `Ok` or a different `Err` variant, fail the test.
-                panic!("Expected InvalidValue error, but got {:?}", result);
-            }
-        }
-    }
-
-    #[test]
     fn test_null_default() {
         #[derive(EasyConfig, Debug, PartialEq)]
         struct TestConfig {
@@ -369,7 +130,7 @@ mod tests {
         #[derive(EasyConfig)]
         struct TestConfig {
             // This field is required empty by default.
-            #[attr(default="", importance = Importance::HIGH, documentation = "docs")]
+            #[attr(default="".to_string(), importance = Importance::HIGH, documentation = "docs")]
             _a: String,
         }
 
@@ -448,7 +209,7 @@ mod tests {
     fn test_invalid_default_string() {
         #[derive(Debug, EasyConfig)]
         struct TestConfig {
-            #[attr(default="bad", validator=ValidString::in_list(&["valid", "values"]),
+            #[attr(default="bad".to_string(), validator=ValidString::in_list(&["valid", "values"]),
             importance = Importance::HIGH, documentation = "docs")]
             _a: String,
         }
@@ -532,7 +293,7 @@ mod tests {
     test_validators!(
         test_string_validator,
         String,
-        "default",
+        "default".to_string(),
         ValidString::in_list(&["good", "values", "default"]),
         &["good", "values", "default"],
         &["bad", "inputs", "DEFAULT"]
@@ -541,7 +302,7 @@ mod tests {
     test_validators!(
         test_list_validator,
         Vec<String>,
-        "1",
+        vec!["1".to_string()],
         ValidList::in_list(&["1", "2", "3"]),
         &["1", "2", "3"],
         &["4", "5", "6"]
@@ -708,7 +469,7 @@ mod tests {
                 #[attr(default = 5, validator=Range::between(0, 14),
                 importance = Importance::HIGH, documentation = "docs", getter)]
                 a1: i32,
-                #[attr(default = "hello", importance = Importance::HIGH, documentation = "docs",
+                #[attr(default = "hello".to_string(), importance = Importance::HIGH, documentation = "docs",
                 getter)]
                 b1: String,
             }
