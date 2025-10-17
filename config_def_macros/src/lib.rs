@@ -100,7 +100,7 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
                 .map(|d| quote! { Some(Into::<String>::into(#d)) })
                 .unwrap_or(quote! { None });
             let default_tokens = default
-                .map(|d| quote! { Some(Into::<String>::into(#d)) })
+                .map(|d| quote! { Some((#d).to_string()) })
                 .unwrap_or(quote! { None });
             let importance_tokens = importance
                 .map(|i| quote! { Some(#i) })

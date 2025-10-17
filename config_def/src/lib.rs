@@ -237,7 +237,7 @@ mod tests {
     fn test_basic_types() {
         #[derive(Debug, PartialEq, EasyConfig)]
         struct TestConfig {
-            #[attr(default = "5", validator = Range::between(0, 14), importance = Importance::HIGH,
+            #[attr(default = 5, validator = Range::between(0, 14), importance = Importance::HIGH,
             documentation = format!("{DOC} Must be between 0 and 14."))]
             a: i32,
             #[attr(importance = Importance::HIGH, documentation = "docs".to_string(),
@@ -426,7 +426,7 @@ mod tests {
     fn test_invalid_default_range() {
         #[derive(Debug, EasyConfig)]
         struct TestConfig {
-            #[attr(default="-1", validator=Range::between(0, 10),
+            #[attr(default=-1, validator=Range::between(0, 10),
             importance = Importance::HIGH, documentation = "docs")]
             _a: i32,
         }
@@ -485,7 +485,7 @@ mod tests {
             fn $test_name() {
                 #[derive(Debug, EasyConfig)]
                 struct TestConfig {
-                    #[attr(default = "$default", validator = $validator, importance = Importance::HIGH,
+                    #[attr(default = $default, validator = $validator, importance = Importance::HIGH,
                     documentation = "docs")]
                     name: $type,
                 }
@@ -523,7 +523,7 @@ mod tests {
     test_validators!(
         test_range_validator,
         i32,
-        "1",
+        1,
         Range::between(0, 10),
         &["1", "5", "9"],
         &["-1", "11"]
@@ -705,7 +705,7 @@ mod tests {
 
             #[derive(Debug, PartialEq, EasyConfig)]
             pub struct TestConfig1 {
-                #[attr(default = "5", validator=Range::between(0, 14),
+                #[attr(default = 5, validator=Range::between(0, 14),
                 importance = Importance::HIGH, documentation = "docs", getter)]
                 a1: i32,
                 #[attr(default = "hello", importance = Importance::HIGH, documentation = "docs",
@@ -717,9 +717,10 @@ mod tests {
         mod test_conf2 {
             use super::prelude::*;
 
+            const A2_DEF_VAL: i32 = 5;
             #[derive(Debug, PartialEq, EasyConfig)]
             pub struct TestConfig2 {
-                #[attr(default = "5", validator=Range::between(0, 14),
+                #[attr(default = A2_DEF_VAL, validator=Range::between(0, 14),
                 importance = Importance::HIGH, documentation = "docs", getter)]
                 a2: i32,
                 #[attr(importance = Importance::HIGH, documentation = "docs", getter)]
