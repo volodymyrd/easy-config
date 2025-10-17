@@ -95,15 +95,15 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
             };
 
             config_key_inits.push(quote! {
-                vec![Box::new(ConfigKey::<#inner_ty> {
-                    name: #lookup_key,
-                    documentation: #docs,
-                    default_value: #default,
-                    importance: #importance,
-                    validator: #validator,
-                    group: #group,
-                    internal_config: #internal_config,
-                }) as Box<dyn ConfigKeyTrait>]
+                vec![Box::new(ConfigKey::<#inner_ty>::new(
+                    #lookup_key,
+                    #docs,
+                    #default,
+                    #validator,
+                    #importance,
+                    #group,
+                    #internal_config,
+                )) as Box<dyn ConfigKeyTrait>]
             });
 
             // Reverted to separate logic paths for `T` and `Option<T>` to fix the error.

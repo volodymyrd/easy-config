@@ -140,13 +140,13 @@ pub trait ConfigKeyTrait: Send + Sync {
 /// field it processes, gathering the information from the `#[attr(...)]` attributes.
 #[derive(Debug, Clone)]
 pub struct ConfigKey<T: 'static + Clone + Send + Sync + ConfigValue> {
-    pub name: &'static str,
-    pub documentation: Option<String>,
-    pub default_value: Option<T>,
-    pub validator: Option<Box<dyn Validator>>,
-    pub importance: Option<Importance>,
-    pub group: Option<String>,
-    pub internal_config: bool,
+    name: &'static str,
+    documentation: Option<String>,
+    default_value: Option<T>,
+    validator: Option<Box<dyn Validator>>,
+    importance: Option<Importance>,
+    group: Option<String>,
+    internal_config: bool,
 }
 
 /// This struct acts as the central repository or "single source of truth" for all
@@ -190,6 +190,28 @@ pub enum Importance {
     HIGH,
     MEDIUM,
     LOW,
+}
+
+impl<T: 'static + Clone + Send + Sync + ConfigValue> ConfigKey<T> {
+    pub fn new(
+        name: &'static str,
+        documentation: Option<String>,
+        default_value: Option<T>,
+        validator: Option<Box<dyn Validator>>,
+        importance: Option<Importance>,
+        group: Option<String>,
+        internal_config: bool,
+    ) -> Self {
+        Self {
+            name,
+            documentation,
+            default_value,
+            validator,
+            importance,
+            group,
+            internal_config,
+        }
+    }
 }
 
 impl Clone for Box<dyn ConfigKeyTrait> {
