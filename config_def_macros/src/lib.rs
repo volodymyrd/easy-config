@@ -51,9 +51,14 @@ pub fn easy_config_derive(input: TokenStream) -> TokenStream {
             }
 
             let field_name_str = field_name.to_string();
-            let lookup_key = attrs
-                .name
-                .map_or(quote! { #field_name_str }, |e| quote! { #e });
+            let lookup_key = attrs.name.map_or(quote! { #field_name_str }, |e| {
+                if let Expr::Lit(expr_lit) = &e
+                    && let Lit::Str(_) = &expr_lit.lit
+                {
+                    return quote! { #e };
+                }
+                quote! { &*(#e) }
+            });
             let docs = attrs
                 .documentation
                 .map(|d| quote! { Some(Into::<String>::into(#d)) })

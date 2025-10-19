@@ -12,6 +12,7 @@ mod validators;
 mod tests {
     use super::*;
     use easy_config_macros::EasyConfig;
+    use once_cell::sync::Lazy;
     use std::collections::HashMap;
     use std::fmt::Debug;
 
@@ -91,6 +92,23 @@ mod tests {
 
         let mut props = HashMap::new();
         props.insert(CONFIG_NAME.to_string(), "value".to_string());
+
+        let config = TestConfig::from_props(&props).unwrap();
+
+        assert_eq!(config.val, "value");
+    }
+
+    #[test]
+    fn test_can_add_lazy_internal_config() {
+        static LAZY_CONFIG_NAME: Lazy<String> = Lazy::new(|| "lazy.config.name".to_string());
+        #[derive(Debug, PartialEq, EasyConfig)]
+        struct TestConfig {
+            #[attr(name = LAZY_CONFIG_NAME, importance = Importance::LOW)]
+            val: String,
+        }
+
+        let mut props = HashMap::new();
+        props.insert(LAZY_CONFIG_NAME.to_string(), "value".to_string());
 
         let config = TestConfig::from_props(&props).unwrap();
 
