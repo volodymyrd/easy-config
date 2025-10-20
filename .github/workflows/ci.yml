@@ -1,5 +1,5 @@
 # The name of your GitHub Actions workflow. This is displayed on the "Actions" tab.
-name: Rust CI
+name: CI
 
 # Controls when the workflow will run.
 on:
